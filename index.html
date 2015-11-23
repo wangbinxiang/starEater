@@ -10,28 +10,27 @@
 
 <script type="text/javascript">
 
+var gameServerAddr = "ws://127.0.0.1:12626";
 var game = new Phaser.Game(800, 600, Phaser.AUTO, '', { preload: preload, create: create, update: update });
 var platforms;
-var player;
+var players = [];
 var star;
 var score = 0;
-var scoreText;
+var textScore;
+var textConnStatus;
+var wsClient;
 
-function preload () {
-    game.load.image('sky', 'assets/sky.png');
-    game.load.image('ground', 'assets/platform.png');
-    game.load.image('star', 'assets/star.png');
-    game.load.spritesheet('dude', 'assets/dude.png', 32, 48);
+function create_ws_connection() {
+    wsClient = new WSClient();
+    wsClient.openConnection();
+    textConnStatus = game.add.text(game.world.width - 100, 0, 'not connected', {fontSize: '12px', fill: '#eee'});
 }
 
-function create () {
-    // connect to websocket server
-    this.client = new Client();
-    this.client.openConnection();
-    myText = game.add.text(0, 0, "started (not yet connected)", { font: "14px Arial", fill: "#ff0044"});
+function create_texts() {
+    textScore = game.add.text(16, 16, 'Score: 0', {fontSize: '32px', fill: '#000'});
+}
 
-    // set game env
-    game.physics.startSystem(Phaser.Physics.ARCADE);
+function create_background() {
     game.add.sprite(0, 0, 'sky');
 
     platforms = game.add.group();
@@ -45,15 +44,26 @@ function create () {
     ledge.body.immovable = true;
     ledge = platforms.create(-150, 250, 'ground');
     ledge.body.immovable = true;
+}
 
-    player = game.add.sprite(32, game.world.height - 150, 'dude');
-    game.physics.arcade.enable(player);
-    player.body.bounce.y = 0.2;
-    player.body.gravity.y = 300;
-    player.body.collideWorldBounds = true;
-    player.animations.add('left', [0, 1, 2, 3], 10, true);
-    player.animations.add('right', [5, 6, 7, 8], 10, true);
+function create_player(index, width) {
+    players[index] = game.add.sprite(width, game.world.height - 150, 'dude');
+    game.physics.arcade.enable(players[index]);
+    players[index].body.bounce.y = 0.2;
+    players[index].body.gravity.y = 300;
+    players[index].body.collideWorldBounds = true;
+    animationLeft = players[index].animations.add('left', [0, 1, 2, 3], 10, true);
+    animationRight = players[index].animations.add('right', [5, 6, 7, 8], 10, true);
+    animationLeft.onLoop.add(wsSyncPosition, this);
+    animationRight.onLoop.add(wsSyncPosition, this);
+}
 
+function create_players() {
+    create_player(0, 32);
+    create_player(1, game.world.width - 32);
+}
+
+function create_stars() {
     stars = game.add.group();
     stars.enableBody = true;
 
@@ -62,72 +72,86 @@ function create () {
         star.body.gravity.y = 300;
         star.body.bounce.y = 0.7 + Math.random() * 0.2;
     }
+}
 
-    scoreText = game.add.text(16, 16, 'Score: 0', {fontSize: '32px', fill: '#000'});
+function preload () {
+    game.load.image('sky', 'assets/sky.png');
+    game.load.image('ground', 'assets/platform.png');
+    game.load.image('star', 'assets/star.png');
+    game.load.spritesheet('dude', 'assets/dude.png', 32, 48);
+}
+
+function create () {
+    game.physics.startSystem(Phaser.Physics.ARCADE);
+    create_background();
+    create_players();
+    create_ws_connection();
+    create_stars();
+    create_texts();
+}
+
+function wsSyncPosition() {
+    if (wsClient.connected) {
+        wsClient.ws.send(JSON.stringify({x: players[0].x, y: players[0].y}));
+    }
 }
 
 function update () {
-    game.physics.arcade.collide(player, platforms);
     game.physics.arcade.collide(stars, platforms);
-    game.physics.arcade.overlap(player, stars, collectStar, null, this);
-    player.body.velocity.x = 0;
+    game.physics.arcade.collide(players[0], platforms);
+    game.physics.arcade.overlap(players[0], stars, collectStar, null, this);
+    players[0].body.velocity.x = 0;
+    game.physics.arcade.collide(players[1], platforms);
+    game.physics.arcade.overlap(players[1], stars, collectStar, null, this);
+    players[1].body.velocity.x = 0;
     cursors = game.input.keyboard.createCursorKeys();
     if (cursors.left.isDown) {
-        player.body.velocity.x = -150;
-        player.animations.play('left');
-        if (this.client.connected) {
-            this.client.ws.send(JSON.stringify({x: player.x, y: player.y}));
-        }
+        players[0].body.velocity.x = -150;
+        players[0].animations.play('left');
     } else if (cursors.right.isDown) {
-        player.body.velocity.x = 150;
-        player.animations.play('right');
-        if (this.client.connected) {
-            this.client.ws.send(JSON.stringify({x: player.x, y: player.y}));
-        }
+        players[0].body.velocity.x = 150;
+        players[0].animations.play('right');
     } else {
-        player.animations.stop();
-        player.frame = 4;
+        players[0].animations.stop();
+        players[0].frame = 4;
+        players[1].frame = 4;
     }
 
-    if (cursors.up.isDown && player.body.touching.down) {
-        player.body.velocity.y = -350;
-        if (this.client.connected) {
-            this.client.ws.send(JSON.stringify({x: player.x, y: player.y}));
-        }
+    if (cursors.up.isDown && players[0].body.touching.down) {
+        players[0].body.velocity.y = -350;
     }
 }
 
 function collectStar (player, star) {
     star.kill();
     score += 10;
-    scoreText.text = 'Score: ' + score;
+    textScore.text = 'Score: ' + score;
 }
 
 
-// websocket client
-function Client() {}
+function WSClient() {}
 
-Client.prototype.openConnection = function() {
-    this.ws = new WebSocket("ws://127.0.0.1:12626");
+WSClient.prototype.openConnection = function() {
+    this.ws = new WebSocket(gameServerAddr);
     this.connected = false;
     this.ws.onmessage = this.onMessage.bind(this);
     this.ws.onerror = this.displayError.bind(this);
     this.ws.onopen = this.connectionOpen.bind(this);
 };
 
-Client.prototype.connectionOpen = function() {
+WSClient.prototype.connectionOpen = function() {
     this.connected = true;
-    myText.text = 'connected\n';
+    textConnStatus.text = 'connected';
 };
 
-Client.prototype.onMessage = function(message) {
+WSClient.prototype.onMessage = function(message) {
     //myText.text = myText.text + message.data;
     //var msg = JSON.parse(message.data);
     //sprite.x = msg.x;
     //sprite.y = msg.y;
 };
 
-Client.prototype.displayError = function(err) {
+WSClient.prototype.displayError = function(err) {
     console.log('Websocketerror: ' + err);
 };
 </script>
