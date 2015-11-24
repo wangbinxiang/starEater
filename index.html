@@ -10,6 +10,8 @@
 
 <script type="text/javascript">
 
+
+//----------------- global start ------------------
 var gameServerAddr = "ws://127.0.0.1:12626";
 var game = new Phaser.Game(800, 600, Phaser.AUTO, '', { preload: preload, create: create, update: update });
 var platforms;
@@ -19,15 +21,25 @@ var score = 0;
 var textScore;
 var textConnStatus;
 var wsClient;
+//----------------- global finish ------------------
 
+
+
+//----------------- preload start ------------------
+function preload () {
+    game.load.image('sky', 'assets/sky.png');
+    game.load.image('ground', 'assets/platform.png');
+    game.load.image('star', 'assets/star.png');
+    game.load.spritesheet('dude', 'assets/dude.png', 32, 48);
+}
+//----------------- preload finish ------------------
+
+
+
+//----------------- create start ------------------
 function create_ws_connection() {
     wsClient = new WSClient();
     wsClient.openConnection();
-    textConnStatus = game.add.text(game.world.width - 100, 0, 'not connected', {fontSize: '12px', fill: '#eee'});
-}
-
-function create_texts() {
-    textScore = game.add.text(16, 16, 'Score: 0', {fontSize: '32px', fill: '#000'});
 }
 
 function create_background() {
@@ -74,11 +86,9 @@ function create_stars() {
     }
 }
 
-function preload () {
-    game.load.image('sky', 'assets/sky.png');
-    game.load.image('ground', 'assets/platform.png');
-    game.load.image('star', 'assets/star.png');
-    game.load.spritesheet('dude', 'assets/dude.png', 32, 48);
+function create_texts() {
+    textScore = game.add.text(16, 16, 'Score: 0', {fontSize: '32px', fill: '#000'});
+    textConnStatus = game.add.text(game.world.width - 100, 0, 'not connected', {fontSize: '12px', fill: '#eee'});
 }
 
 function create () {
@@ -89,21 +99,32 @@ function create () {
     create_stars();
     create_texts();
 }
+//----------------- create finish ------------------
 
-function wsSyncPosition() {
-    if (wsClient.connected) {
-        wsClient.ws.send(JSON.stringify({x: players[0].x, y: players[0].y}));
-    }
+
+
+//----------------- update start ------------------
+function updateEatStar (player, star) {
+    star.kill();
+    score += 10;
+    textScore.text = 'Score: ' + score;
 }
 
-function update () {
+function update_physics() {
     game.physics.arcade.collide(stars, platforms);
+
     game.physics.arcade.collide(players[0], platforms);
-    game.physics.arcade.overlap(players[0], stars, collectStar, null, this);
-    players[0].body.velocity.x = 0;
     game.physics.arcade.collide(players[1], platforms);
-    game.physics.arcade.overlap(players[1], stars, collectStar, null, this);
+    game.physics.arcade.collide(players[0], players[1]);
+
+    players[0].body.velocity.x = 0;
     players[1].body.velocity.x = 0;
+
+    game.physics.arcade.overlap(players[0], stars, updateEatStar, null, this);
+    game.physics.arcade.overlap(players[1], stars, updateEatStar, null, this);
+}
+
+function update_controls() {
     cursors = game.input.keyboard.createCursorKeys();
     if (cursors.left.isDown) {
         players[0].body.velocity.x = -150;
@@ -114,7 +135,6 @@ function update () {
     } else {
         players[0].animations.stop();
         players[0].frame = 4;
-        players[1].frame = 4;
     }
 
     if (cursors.up.isDown && players[0].body.touching.down) {
@@ -122,12 +142,20 @@ function update () {
     }
 }
 
-function collectStar (player, star) {
-    star.kill();
-    score += 10;
-    textScore.text = 'Score: ' + score;
+function update () {
+    update_physics();
+    update_controls();
 }
+//----------------- update finish ------------------
 
+
+
+//----------------- network start ------------------
+function wsSyncPosition() {
+    if (wsClient.connected) {
+        wsClient.ws.send(JSON.stringify({x: players[0].x, y: players[0].y}));
+    }
+}
 
 function WSClient() {}
 
@@ -154,6 +182,8 @@ WSClient.prototype.onMessage = function(message) {
 WSClient.prototype.displayError = function(err) {
     console.log('Websocketerror: ' + err);
 };
+//----------------- network finish ------------------
+
 </script>
 
 </body>
