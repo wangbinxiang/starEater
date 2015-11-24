@@ -9,11 +9,17 @@
 <body>
 
 <script type="text/javascript">
-
-
 //----------------- global start ------------------
+var WORLD_WIDTH = 800;
+var WORLD_HEIGHT = 600;
+var PLAYER_WIDTH = 32;
+var PLAYER_HEIGHT = 48;
+var STAR_WIDTH = 24;
+var STAR_HEIGHT = 22;
+var STAR_COUNT = 12;
+
 var gameServerAddr = "ws://127.0.0.1:12626";
-var game = new Phaser.Game(800, 600, Phaser.AUTO, '', { preload: preload, create: create, update: update });
+var game = new Phaser.Game(WORLD_WIDTH, WORLD_HEIGHT, Phaser.AUTO, '', { preload: preload, create: create, update: update });
 var platforms;
 var players = [];
 var star;
@@ -21,6 +27,9 @@ var score = 0;
 var textScore;
 var textConnStatus;
 var wsClient;
+var random_seed;
+var bool_init = false;
+
 //----------------- global finish ------------------
 
 
@@ -30,7 +39,7 @@ function preload () {
     game.load.image('sky', 'assets/sky.png');
     game.load.image('ground', 'assets/platform.png');
     game.load.image('star', 'assets/star.png');
-    game.load.spritesheet('dude', 'assets/dude.png', 32, 48);
+    game.load.spritesheet('dude', 'assets/dude.png', PLAYER_WIDTH, PLAYER_HEIGHT);
 }
 //----------------- preload finish ------------------
 
@@ -40,6 +49,16 @@ function preload () {
 function create_ws_connection() {
     wsClient = new WSClient();
     wsClient.openConnection();
+}
+
+function create_global_vars() {
+    console.log(123567);
+    wsTalk("getGlobal", "");
+}
+
+function cb_create_global_vars(data) {
+    random_seed = data["random_seed"];
+    bool_init = true;
 }
 
 function create_background() {
@@ -71,17 +90,20 @@ function create_player(index, width) {
 }
 
 function create_players() {
-    create_player(0, 32);
-    create_player(1, game.world.width - 32);
+    var margin = 32;
+    create_player(0, margin);
+    create_player(1, game.world.width - PLAYER_WIDTH - margin);
 }
 
 function create_stars() {
     stars = game.add.group();
     stars.enableBody = true;
 
-    for (var i = 0; i < 12; i++) {
-        var star = stars.create(i * 70, 0, 'star');
-        star.body.gravity.y = 300;
+    for (var i = 0; i < STAR_COUNT; i++) {
+        var star = stars.create(
+            i * WORLD_WIDTH / STAR_COUNT + WORLD_WIDTH / STAR_COUNT / 2 - STAR_WIDTH / 2
+            , 0, 'star');
+        star.body.gravity.y = 500;
         star.body.bounce.y = 0.7 + Math.random() * 0.2;
     }
 }
@@ -92,10 +114,14 @@ function create_texts() {
 }
 
 function create () {
+    create_ws_connection();
+    create_global_vars();
+
     game.physics.startSystem(Phaser.Physics.ARCADE);
+
+    //while(!bool_init) {var start = Date.now();}
     create_background();
     create_players();
-    create_ws_connection();
     create_stars();
     create_texts();
 }
@@ -110,7 +136,7 @@ function updateEatStar (player, star) {
     textScore.text = 'Score: ' + score;
 }
 
-function update_physics() {
+function update_physics () {
     game.physics.arcade.collide(stars, platforms);
 
     game.physics.arcade.collide(players[0], platforms);
@@ -124,7 +150,7 @@ function update_physics() {
     game.physics.arcade.overlap(players[1], stars, updateEatStar, null, this);
 }
 
-function update_controls() {
+function update_controls () {
     cursors = game.input.keyboard.createCursorKeys();
     if (cursors.left.isDown) {
         players[0].body.velocity.x = -150;
@@ -147,17 +173,29 @@ function update () {
     update_controls();
 }
 //----------------- update finish ------------------
+function cb_sync_pos () {
+
+}
 
 
 
 //----------------- network start ------------------
-function wsSyncPosition() {
-    if (wsClient.connected) {
-        wsClient.ws.send(JSON.stringify({x: players[0].x, y: players[0].y}));
-    }
+function wsSyncPosition () {
+    wsTalk("syncPos", {x: players[0].x, y: players[0].y});
 }
 
-function WSClient() {}
+function wsTalk(cmd, data) {
+    setInterval(function(){ 
+        if (wsClient.connected) {
+            var data = {"cmd": cmd, "data":data};
+            console.log(data);
+            wsClient.ws.send(JSON.stringify(data));
+            return;
+        }
+    }, 100);
+}
+
+function WSClient () {}
 
 WSClient.prototype.openConnection = function() {
     this.ws = new WebSocket(gameServerAddr);
@@ -173,10 +211,17 @@ WSClient.prototype.connectionOpen = function() {
 };
 
 WSClient.prototype.onMessage = function(message) {
-    //myText.text = myText.text + message.data;
-    //var msg = JSON.parse(message.data);
-    //sprite.x = msg.x;
-    //sprite.y = msg.y;
+    var msg = JSON.parse(message.data);
+    var cmd = msg["cmd"];
+    var data = msg["data"];
+    switch(cmd) {
+        case "syncPos":
+            cb_sync_pos(data);
+            break;
+        case "getGlobal":
+            cb_create_global_vars(data);
+            break;
+    }
 };
 
 WSClient.prototype.displayError = function(err) {
