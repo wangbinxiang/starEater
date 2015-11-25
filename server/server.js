@@ -17,9 +17,9 @@ function controllerSyncPos(data) {
     wsBroadCast("syncPos", playerPos);
 }
 
-function controllerGetGlobal(data) {
+function controllerInit(data) {
     var global = {"random_seed": 5};
-    wsBroadCast("getGlobal", global);
+    wsBroadCast("init", global);
 }
 
 wss.on('connection', function(ws) {
@@ -28,13 +28,12 @@ wss.on('connection', function(ws) {
         var cmd = msg["cmd"];
         var data = msg["data"];
         var resp;
-        console.log('msg: ' + cmd);
         switch(cmd) {
+            case "init":
+                resp = controllerInit(data);
+                break;
             case "syncPos":
                 resp = controllerSyncPos(data);
-                break;
-            case "getGlobal":
-                resp = controllerGetGlobal(data);
                 break;
         }
         console.log('msg: ' + cmd);
@@ -42,6 +41,5 @@ wss.on('connection', function(ws) {
     wss.clients.forEach(function each(client) {
         client.send(JSON.stringify(playerPos));
     });
-    //ws.send(JSON.stringify(playerPos));
     console.log('connection');
 });

@@ -9,6 +9,69 @@
 <body>
 
 <script type="text/javascript">
+//----------------- helper start ------------------
+var helper_random_seed = 0;
+function srandom(seed) {
+    helper_random_seed = seed;
+}
+function random() {
+    var x = Math.sin(helper_random_seed++) * 10000;
+    return x - Math.floor(x);
+}
+//----------------- helper finish ------------------
+
+
+
+//----------------- network start ------------------
+function wsSyncPosition () {
+    wsTalk("syncPos", {x: players[0].x, y: players[0].y});
+}
+
+function wsTalk(cmd, data) {
+    if(wsClient.connected) {
+        var data = {"cmd": cmd, "data":data};
+        console.log(data);
+        wsClient.ws.send(JSON.stringify(data));
+        return;
+    }
+}
+
+function WSClient () {}
+
+WSClient.prototype.openConnection = function() {
+    this.ws = new WebSocket(gameServerAddr);
+    this.connected = false;
+    this.ws.onmessage = this.onMessage.bind(this);
+    this.ws.onerror = this.displayError.bind(this);
+    this.ws.onopen = this.connectionOpen.bind(this);
+};
+
+WSClient.prototype.connectionOpen = function() {
+    this.connected = true;
+    wsTalk("init", "");
+};
+
+WSClient.prototype.onMessage = function(message) {
+    var msg = JSON.parse(message.data);
+    var cmd = msg["cmd"];
+    var data = msg["data"];
+    switch(cmd) {
+        case "init":
+            cb_init(data);
+            break;
+        case "syncPos":
+            cb_sync_pos(data);
+            break;
+    }
+};
+
+WSClient.prototype.displayError = function(err) {
+    console.log('Websocketerror: ' + err);
+};
+//----------------- network finish ------------------
+
+
+
 //----------------- global start ------------------
 var WORLD_WIDTH = 800;
 var WORLD_HEIGHT = 600;
@@ -19,18 +82,35 @@ var STAR_HEIGHT = 22;
 var STAR_COUNT = 12;
 
 var gameServerAddr = "ws://127.0.0.1:12626";
-var game = new Phaser.Game(WORLD_WIDTH, WORLD_HEIGHT, Phaser.AUTO, '', { preload: preload, create: create, update: update });
+var game;
 var platforms;
 var players = [];
 var star;
 var score = 0;
 var textScore;
 var textConnStatus;
-var wsClient;
-var random_seed;
-var bool_init = false;
 
+var wsClient = new WSClient();
+
+function main() {
+    wsClient.openConnection();
+}
 //----------------- global finish ------------------
+
+
+
+//----------------- callbacks start ------------------
+function cb_init(data) {
+    var random_seed = data["random_seed"];
+    srandom(random_seed);
+    game = new Phaser.Game(WORLD_WIDTH, WORLD_HEIGHT, Phaser.AUTO, '', { preload: preload, create: create, update: update });
+}
+
+
+function cb_sync_pos () {
+
+}
+//----------------- callbacks finish ------------------
 
 
 
@@ -46,21 +126,6 @@ function preload () {
 
 
 //----------------- create start ------------------
-function create_ws_connection() {
-    wsClient = new WSClient();
-    wsClient.openConnection();
-}
-
-function create_global_vars() {
-    console.log(123567);
-    wsTalk("getGlobal", "");
-}
-
-function cb_create_global_vars(data) {
-    random_seed = data["random_seed"];
-    bool_init = true;
-}
-
 function create_background() {
     game.add.sprite(0, 0, 'sky');
 
@@ -104,7 +169,7 @@ function create_stars() {
             i * WORLD_WIDTH / STAR_COUNT + WORLD_WIDTH / STAR_COUNT / 2 - STAR_WIDTH / 2
             , 0, 'star');
         star.body.gravity.y = 500;
-        star.body.bounce.y = 0.7 + Math.random() * 0.2;
+        star.body.bounce.y = 0.7 + random() * 0.2;
     }
 }
 
@@ -114,12 +179,7 @@ function create_texts() {
 }
 
 function create () {
-    create_ws_connection();
-    create_global_vars();
-
     game.physics.startSystem(Phaser.Physics.ARCADE);
-
-    //while(!bool_init) {var start = Date.now();}
     create_background();
     create_players();
     create_stars();
@@ -168,67 +228,16 @@ function update_controls () {
     }
 }
 
+
 function update () {
     update_physics();
     update_controls();
+    textConnStatus.text = 'connected';
 }
 //----------------- update finish ------------------
-function cb_sync_pos () {
-
-}
 
 
-
-//----------------- network start ------------------
-function wsSyncPosition () {
-    wsTalk("syncPos", {x: players[0].x, y: players[0].y});
-}
-
-function wsTalk(cmd, data) {
-    setInterval(function(){ 
-        if (wsClient.connected) {
-            var data = {"cmd": cmd, "data":data};
-            console.log(data);
-            wsClient.ws.send(JSON.stringify(data));
-            return;
-        }
-    }, 100);
-}
-
-function WSClient () {}
-
-WSClient.prototype.openConnection = function() {
-    this.ws = new WebSocket(gameServerAddr);
-    this.connected = false;
-    this.ws.onmessage = this.onMessage.bind(this);
-    this.ws.onerror = this.displayError.bind(this);
-    this.ws.onopen = this.connectionOpen.bind(this);
-};
-
-WSClient.prototype.connectionOpen = function() {
-    this.connected = true;
-    textConnStatus.text = 'connected';
-};
-
-WSClient.prototype.onMessage = function(message) {
-    var msg = JSON.parse(message.data);
-    var cmd = msg["cmd"];
-    var data = msg["data"];
-    switch(cmd) {
-        case "syncPos":
-            cb_sync_pos(data);
-            break;
-        case "getGlobal":
-            cb_create_global_vars(data);
-            break;
-    }
-};
-
-WSClient.prototype.displayError = function(err) {
-    console.log('Websocketerror: ' + err);
-};
-//----------------- network finish ------------------
-
+main();
 </script>
 
 </body>
