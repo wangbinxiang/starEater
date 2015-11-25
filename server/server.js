@@ -4,6 +4,8 @@ var WebSocketServer = require('ws').Server
 console.log('Server started on 12626');
 
 var playerPos = {x:0, y:0};
+var rooms = {};
+var waitingPlayers = [];
 
 function wsBroadCast(cmd, data) {
     for(var i in wss.clients) {
@@ -18,7 +20,8 @@ function controllerSyncPos(data) {
 }
 
 function controllerInit(data) {
-    var global = {"random_seed": 5};
+    var random_seed = Math.floor(Math.random() * 1000 + 1);
+    var global = {"random_seed": random_seed};
     wsBroadCast("init", global);
 }
 
