@@ -18,8 +18,8 @@ function player(ws){
 //创建玩家
 function createPlayer(ws) {
     var p = new player(ws);
-    p[ws] = player;
-    return player;
+    players[ws] = p;
+    return p;
 }
 
 player.prototype.send = function(cmd, data) {
