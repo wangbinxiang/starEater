@@ -1,23 +1,29 @@
 var WebSocketServer = require('ws').Server
 , wss = new WebSocketServer({port: 12626});
 
-//uuid
 var uuid = require('node-uuid');
-
 console.log('Server started on 12626');
 
 var playerPos = {x:0, y:0};
 var rooms = {};
+var players = {};
 
 //玩家类
 function player(ws){
     this.uuid = uuid.v4();
     this.ws = ws;
+    this.roomId = null;
 }
 
 //创建玩家
 function createPlayer(ws) {
-    return new player(ws);
+    var player = new player(ws);
+    players[ws] = player;
+    return player;
+}
+
+player.prototype.send = function(cmd, data) {
+    this.ws.send(JSON.stringify({"cmd": cmd, "data":data}));
 }
 
 //玩家等待队列对象
@@ -30,7 +36,6 @@ waitingPlayers.prototype.scanWaiterToCreateRoom = function() {
     console.log('scaning.....' + this.players.length);
     //判断当前等待用户是否多余一个
     if (this.players.length > 1) {
-
         //获取玩家数据，创建房间，通知玩家加入房间
         //获取一号玩家
         playerOne = this.players.shift();
@@ -43,8 +48,10 @@ waitingPlayers.prototype.scanWaiterToCreateRoom = function() {
         rooms[room.urid] = room;
         //一号玩家加入房间
         room.playerOne = playerOne;
+        room.playerOne.roomId = room.urid;
         //二号玩家加入房间
         room.playerTwo = playerTwo;
+        room.playerTwo.roomId = room.urid;
 
         //通知玩家加入房间
         this.notifyPlayerJoinRoom(room);
@@ -53,37 +60,40 @@ waitingPlayers.prototype.scanWaiterToCreateRoom = function() {
     } else {
         //延时扫描等待玩家
         var _this = this;
-        setTimeout(function(){_this.scanWaiterToCreateRoom()}, 5000);
+        setTimeout(function(){_this.scanWaiterToCreateRoom()}, 1000);
     }
 }
 
-//通知玩家加入房间
 waitingPlayers.prototype.notifyPlayerJoinRoom = function(room) {
-    //通知一号玩家加入房间
-    room.playerOne.ws.send('something');
-    //通知二号玩家加入房间
-    room.playerTwo.ws.send('something');
+    var data = {
+        "randomSeed": room.randomSeed, 
+        "roomId": room.urid, 
+        "playerOneId": room.playerOne.uuid, 
+        "playerTwoId": room.playerTwo.uuid
+    };
+    room.broadCast("init", data);
+    playerOne.send("yourRoleId", room.playerOne.uuid)
+    playerTwo.send("yourRoleId", room.playerTwo.uuid)
 }
 
-//玩家加入等待队列
 waitingPlayers.prototype.playerJoinWaiting = function(player) {
-    //通知一号玩家加入房间
     this.players.push(player)
 }
 
 
 //房间类
 function room() {
-    //房间id
     this.urid = uuid.v4();
-    //一号玩家，左边
+    this.randomSeed = Math.floor(Math.random() * 1000 + 1);
     this.playerOne = null;
-    //二号玩家，右边
     this.playerTwo = null;
 }
 
+room.prototype.broadCast = function(cmd, data) {
+    room.playerOne.send(cmd, data);
+    room.playerTwo.send(cmd, data);
+}
 
-//创建房间
 function createRoom() {
     return new room();
 }
@@ -94,16 +104,17 @@ function wsBroadCast(cmd, data) {
     }
 }
 
-function controllerSyncPos(data) {
-    playerPos.x = data.x;
-    playerPos.y = data.y;
-    wsBroadCast("syncPos", playerPos);
+function controllerSyncPos(ws, positionData) {
+    var roomId = players[ws].roomId;
+    var playerId = players[ws].uuId;
+    var room = rooms[roomId];
+    var data = {"playerId": playerId, "pos": positionData};
+    room.broadCast("syncPos", data);
 }
 
-function controllerInit(data) {
-    var random_seed = Math.floor(Math.random() * 1000 + 1);
-    var global = {"random_seed": random_seed};
-    wsBroadCast("init", global);
+function controllerInit(ws) {
+    var player = createPlayer(ws);
+    wp.playerJoinWaiting(player);
 }
 
 
@@ -120,15 +131,10 @@ wss.on('connection', function(ws) {
         var resp;
         switch(cmd) {
             case "init":
-                //初始化时，创建玩家
-                var player = createPlayer(ws);
-                //玩家加入等待队列
-                wp.playerJoinWaiting(player);
-
-                resp = controllerInit(data);
+                resp = controllerInit(ws);
                 break;
             case "syncPos":
-                resp = controllerSyncPos(data);
+                resp = controllerSyncPos(ws, data);
                 break;
         }
         console.log('msg: ' + cmd);

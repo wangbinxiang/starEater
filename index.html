@@ -59,6 +59,9 @@ WSClient.prototype.onMessage = function(message) {
         case "init":
             cb_init(data);
             break;
+        case "yourRoleId":
+            cbMyRoleId(data);
+            break;
         case "syncPos":
             cb_sync_pos(data);
             break;
@@ -90,6 +93,7 @@ var star;
 var score = 0;
 var textScore;
 var textConnStatus;
+var playerId;
 
 var wsClient = new WSClient();
 
@@ -102,12 +106,15 @@ function main() {
 
 //----------------- callbacks start ------------------
 function cb_init(data) {
-    var random_seed = data["random_seed"];
+    var random_seed = data["randomSeed"];
     console.log(data);
     srandom(random_seed);
     game = new Phaser.Game(WORLD_WIDTH, WORLD_HEIGHT, Phaser.AUTO, '', { preload: preload, create: create, update: update });
 }
 
+function cbMyRoleId(data) {
+    playerId = data;
+}
 
 function cb_sync_pos () {
 
