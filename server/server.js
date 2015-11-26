@@ -18,8 +18,8 @@ function player(ws){
 //创建玩家
 function createPlayer(ws) {
     var p = new player(ws);
-    p[ws] = player;
-    return player;
+    players[ws] = p;
+    return p;
 }
 
 player.prototype.send = function(cmd, data) {
@@ -72,8 +72,8 @@ waitingPlayers.prototype.notifyPlayerJoinRoom = function(room) {
         "playerTwoId": room.playerTwo.uuid
     };
     room.broadCast("init", data);
-    playerOne.send("yourRoleId", room.playerOne.uuid)
-    playerTwo.send("yourRoleId", room.playerTwo.uuid)
+    room.playerOne.send("yourRoleId", room.playerOne.uuid)
+    room.playerTwo.send("yourRoleId", room.playerTwo.uuid)
 }
 
 waitingPlayers.prototype.playerJoinWaiting = function(player) {
@@ -90,8 +90,8 @@ function room() {
 }
 
 room.prototype.broadCast = function(cmd, data) {
-    room.playerOne.send(cmd, data);
-    room.playerTwo.send(cmd, data);
+    this.playerOne.send(cmd, data);
+    this.playerTwo.send(cmd, data);
 }
 
 function createRoom() {
