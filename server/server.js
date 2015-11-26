@@ -17,8 +17,8 @@ function player(ws){
 
 //创建玩家
 function createPlayer(ws) {
-    var player = new player(ws);
-    players[ws] = player;
+    var p = new player(ws);
+    p[ws] = player;
     return player;
 }
 
