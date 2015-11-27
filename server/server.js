@@ -38,9 +38,9 @@ waitingPlayers.prototype.scanWaiterToCreateRoom = function() {
     if (this.players.length > 1) {
         //获取玩家数据，创建房间，通知玩家加入房间
         //获取一号玩家
-        playerOne = this.players.shift();
+        playerOne = this.players.pop();
         //获取二号玩家
-        playerTwo = this.players.shift();
+        playerTwo = this.players.pop();
 
         //创建房间
         var room = createRoom();
