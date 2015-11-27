@@ -4,7 +4,6 @@ var WebSocketServer = require('ws').Server
 var uuid = require('node-uuid');
 console.log('Server started on 12626');
 
-var playerPos = {x:0, y:0};
 var rooms = {};
 var players = {};
 
@@ -18,12 +17,14 @@ function player(ws){
 //创建玩家
 function createPlayer(ws) {
     var p = new player(ws);
-    players[ws] = p;
+    players[p.uuid] = p;
     return p;
 }
 
 player.prototype.send = function(cmd, data) {
-    this.ws.send(JSON.stringify({"cmd": cmd, "data":data}));
+    var data = {"cmd": cmd, "pid":this.uuid, "data":data};
+    this.ws.send(JSON.stringify(data));
+    console.log(data);
 }
 
 //玩家等待队列对象
@@ -105,15 +106,8 @@ function createRoom() {
     return new room();
 }
 
-function wsBroadCast(cmd, data) {
-    for(var i in wss.clients) {
-        wss.clients[i].send(JSON.stringify({"cmd": cmd, "data":data}));
-    }
-}
-
-function controllerSyncPos(ws, positionData) {
-    var roomId = players[ws].roomId;
-    var playerId = players[ws].uuid;
+function controllerSyncPos(ws, playerId, positionData) {
+    var roomId = players[playerId].roomId;
     var room = rooms[roomId];
     var data = {"playerId": playerId, "pos": positionData};
     room.broadCast("syncPos", data);
@@ -134,6 +128,7 @@ wss.on('connection', function(ws) {
     ws.on('message', function(message) {
         var msg = JSON.parse(message);
         var cmd = msg["cmd"];
+        var playerId = msg["pid"];
         var data = msg["data"];
         var resp;
         switch(cmd) {
@@ -141,13 +136,11 @@ wss.on('connection', function(ws) {
                 resp = controllerInit(ws);
                 break;
             case "syncPos":
-                resp = controllerSyncPos(ws, data);
+                resp = controllerSyncPos(ws, playerId, data);
                 break;
         }
-        console.log('msg: ' + cmd);
-    });
-    wss.clients.forEach(function each(client) {
-        client.send(JSON.stringify(playerPos));
+        console.log('msg: ' + cmd + ', playerId: ' + playerId);
+        console.log(data);
     });
     console.log('connection');
 });

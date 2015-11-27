@@ -24,13 +24,12 @@ function random() {
 
 //----------------- network start ------------------
 function wsSyncPosition () {
-    console.log(playerId);
     wsTalk("syncPos", {x: players[playerId].x, y: players[playerId].y});
 }
 
 function wsTalk(cmd, data) {
     if(wsClient.connected) {
-        var data = {"cmd": cmd, "data":data};
+        var data = {"cmd": cmd, "pid": playerId, "data":data};
         console.log(data);
         wsClient.ws.send(JSON.stringify(data));
         return;
@@ -54,6 +53,7 @@ WSClient.prototype.connectionOpen = function() {
 
 WSClient.prototype.onMessage = function(message) {
     var msg = JSON.parse(message.data);
+    console.log(msg);
     var cmd = msg["cmd"];
     var data = msg["data"];
     switch(cmd) {
@@ -92,7 +92,7 @@ var star;
 var score = 0;
 var textScore;
 var textConnStatus;
-var playerId;
+var playerId = 0;
 var roomId;
 
 var wsClient = new WSClient();
@@ -106,8 +106,6 @@ function main() {
 
 //----------------- callbacks start ------------------
 function cb_init(data) {
-    console.log(data);
-
     playerId = data.yourRoleId;
     roomId = data.roomId;
     playerIds.push(data.playerOneId);
@@ -120,11 +118,7 @@ function cb_sync_pos (data) {
     var movePlayerId = data.playerId;
     var x = data.pos.x;
     var y = data.pos.y;
-    console.log(playerId);
-    console.log(movePlayerId);
     if (movePlayerId != playerId) {
-        console.log("syncingpos");
-        console.log(data);
         players[movePlayerId].x = x;
         players[movePlayerId].y = y;
     }
@@ -169,8 +163,12 @@ function create_player(index, width) {
         players[index].body.collideWorldBounds = true;
         var animationL = players[index].animations.add('left', [0, 1, 2, 3], 10, true);
         var animationR = players[index].animations.add('right', [5, 6, 7, 8], 10, true);
+        animationL.onStart.add(wsSyncPosition, this);
+        animationR.onStart.add(wsSyncPosition, this);
         animationL.onLoop.add(wsSyncPosition, this);
         animationR.onLoop.add(wsSyncPosition, this);
+        animationL.onComplete.add(wsSyncPosition, this);
+        animationR.onComplete.add(wsSyncPosition, this);
 }
 
 function create_players() {
