@@ -24,6 +24,7 @@ function random() {
 
 //----------------- network start ------------------
 function wsSyncPosition () {
+    console.log(playerId);
     wsTalk("syncPos", {x: players[playerId].x, y: players[playerId].y});
 }
 
@@ -117,8 +118,15 @@ function cb_init(data) {
 
 function cb_sync_pos (data) {
     var movePlayerId = data.playerId;
+    var x = data.pos.x;
+    var y = data.pos.y;
+    console.log(playerId);
+    console.log(movePlayerId);
     if (movePlayerId != playerId) {
+        console.log("syncingpos");
         console.log(data);
+        players[movePlayerId].x = x;
+        players[movePlayerId].y = y;
     }
 }
 //----------------- callbacks finish ------------------
@@ -223,8 +231,6 @@ function update_physics () {
             game.physics.arcade.collide(players[index], players[playerIds[i+1]]);
         }
     }
-
-    //game.physics.arcade.collide(players[0], players[1]);
 }
 
 function update_controls () {
