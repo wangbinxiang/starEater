@@ -112,6 +112,7 @@ function cb_init(data) {
     playerIds.push(data.playerTwoId);
     srandom(data.randomSeed);
     game = new Phaser.Game(WORLD_WIDTH, WORLD_HEIGHT, Phaser.AUTO, '', { preload: preload, create: create, update: update });
+    game.stage.disablePauseScreen = true;
 }
 
 function cb_sync_pos (data) {
