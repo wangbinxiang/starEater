@@ -24,7 +24,7 @@ function random() {
 
 //----------------- network start ------------------
 function wsSyncPosition () {
-    wsTalk("syncPos", {x: players[0].x, y: players[0].y});
+    wsTalk("syncPos", {x: players[playerId].x, y: players[playerId].y});
 }
 
 function wsTalk(cmd, data) {
@@ -59,9 +59,6 @@ WSClient.prototype.onMessage = function(message) {
         case "init":
             cb_init(data);
             break;
-        case "yourRoleId":
-            cbMyRoleId(data);
-            break;
         case "syncPos":
             cb_sync_pos(data);
             break;
@@ -88,12 +85,14 @@ var STAR_COUNT = 12;
 var gameServerAddr = "ws://127.0.0.1:12626";
 var game;
 var platforms;
+var playerIds = [];
 var players = [];
 var star;
 var score = 0;
 var textScore;
 var textConnStatus;
 var playerId;
+var roomId;
 
 var wsClient = new WSClient();
 
@@ -106,18 +105,21 @@ function main() {
 
 //----------------- callbacks start ------------------
 function cb_init(data) {
-    var random_seed = data["randomSeed"];
     console.log(data);
-    srandom(random_seed);
+
+    playerId = data.yourRoleId;
+    roomId = data.roomId;
+    playerIds.push(data.playerOneId);
+    playerIds.push(data.playerTwoId);
+    srandom(data.randomSeed);
     game = new Phaser.Game(WORLD_WIDTH, WORLD_HEIGHT, Phaser.AUTO, '', { preload: preload, create: create, update: update });
 }
 
-function cbMyRoleId(data) {
-    playerId = data;
-}
-
-function cb_sync_pos () {
-
+function cb_sync_pos (data) {
+    var movePlayerId = data.playerId;
+    if (movePlayerId != playerId) {
+        console.log(data);
+    }
 }
 //----------------- callbacks finish ------------------
 
@@ -152,21 +154,26 @@ function create_background() {
 }
 
 function create_player(index, width) {
-    players[index] = game.add.sprite(width, game.world.height - 150, 'dude');
-    game.physics.arcade.enable(players[index]);
-    players[index].body.bounce.y = 0.2;
-    players[index].body.gravity.y = 300;
-    players[index].body.collideWorldBounds = true;
-    animationLeft = players[index].animations.add('left', [0, 1, 2, 3], 10, true);
-    animationRight = players[index].animations.add('right', [5, 6, 7, 8], 10, true);
-    animationLeft.onLoop.add(wsSyncPosition, this);
-    animationRight.onLoop.add(wsSyncPosition, this);
+        players[index] = game.add.sprite(width, game.world.height - 150, 'dude');
+        game.physics.arcade.enable(players[index]);
+        players[index].body.bounce.y = 0.2;
+        players[index].body.gravity.y = 300;
+        players[index].body.collideWorldBounds = true;
+        var animationL = players[index].animations.add('left', [0, 1, 2, 3], 10, true);
+        var animationR = players[index].animations.add('right', [5, 6, 7, 8], 10, true);
+        animationL.onLoop.add(wsSyncPosition, this);
+        animationR.onLoop.add(wsSyncPosition, this);
 }
 
 function create_players() {
-    var margin = 32;
-    create_player(0, margin);
-    create_player(1, game.world.width - PLAYER_WIDTH - margin);
+    for(var i=0;i<playerIds.length;i++) {
+        var index = playerIds[i];
+        var margin = 32;
+        if (i % 2 == 1) {
+            margin = game.world.width - PLAYER_WIDTH - margin;
+        }
+        create_player(index, margin);
+    }
 }
 
 function create_stars() {
@@ -207,33 +214,31 @@ function updateEatStar (player, star) {
 
 function update_physics () {
     game.physics.arcade.collide(stars, platforms);
+    for(var i=0;i<playerIds.length;i++) {
+        var index = playerIds[i];
+        game.physics.arcade.collide(players[index], platforms);
+        players[index].body.velocity.x = 0;
+        game.physics.arcade.overlap(players[index], stars, updateEatStar, null, this);
+    }
 
-    game.physics.arcade.collide(players[0], platforms);
-    game.physics.arcade.collide(players[1], platforms);
-    game.physics.arcade.collide(players[0], players[1]);
-
-    players[0].body.velocity.x = 0;
-    players[1].body.velocity.x = 0;
-
-    game.physics.arcade.overlap(players[0], stars, updateEatStar, null, this);
-    game.physics.arcade.overlap(players[1], stars, updateEatStar, null, this);
+    //game.physics.arcade.collide(players[0], players[1]);
 }
 
 function update_controls () {
     cursors = game.input.keyboard.createCursorKeys();
     if (cursors.left.isDown) {
-        players[0].body.velocity.x = -150;
-        players[0].animations.play('left');
+        players[playerId].body.velocity.x = -150;
+        players[playerId].animations.play('left');
     } else if (cursors.right.isDown) {
-        players[0].body.velocity.x = 150;
-        players[0].animations.play('right');
+        players[playerId].body.velocity.x = 150;
+        players[playerId].animations.play('right');
     } else {
-        players[0].animations.stop();
-        players[0].frame = 4;
+        players[playerId].animations.stop();
+        players[playerId].frame = 4;
     }
 
-    if (cursors.up.isDown && players[0].body.touching.down) {
-        players[0].body.velocity.y = -350;
+    if (cursors.up.isDown && players[playerId].body.touching.down) {
+        players[playerId].body.velocity.y = -350;
     }
 }
 

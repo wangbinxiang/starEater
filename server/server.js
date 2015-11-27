@@ -43,7 +43,7 @@ waitingPlayers.prototype.scanWaiterToCreateRoom = function() {
         playerTwo = this.players.shift();
 
         //创建房间
-        room = createRoom();
+        var room = createRoom();
         //房间加入房间列表
         rooms[room.urid] = room;
         //一号玩家加入房间
@@ -65,15 +65,22 @@ waitingPlayers.prototype.scanWaiterToCreateRoom = function() {
 }
 
 waitingPlayers.prototype.notifyPlayerJoinRoom = function(room) {
-    var data = {
+    var playerOneData = {
         "randomSeed": room.randomSeed, 
         "roomId": room.urid, 
         "playerOneId": room.playerOne.uuid, 
-        "playerTwoId": room.playerTwo.uuid
+        "playerTwoId": room.playerTwo.uuid,
+        "yourRoleId": room.playerOne.uuid
     };
-    room.broadCast("init", data);
-    room.playerOne.send("yourRoleId", room.playerOne.uuid)
-    room.playerTwo.send("yourRoleId", room.playerTwo.uuid)
+    var playerTwoData = {
+        "randomSeed": room.randomSeed, 
+        "roomId": room.urid, 
+        "playerOneId": room.playerOne.uuid, 
+        "playerTwoId": room.playerTwo.uuid,
+        "yourRoleId": room.playerTwo.uuid
+    };
+    room.playerOne.send("init", playerOneData)
+    room.playerTwo.send("init", playerTwoData)
 }
 
 waitingPlayers.prototype.playerJoinWaiting = function(player) {
@@ -106,7 +113,7 @@ function wsBroadCast(cmd, data) {
 
 function controllerSyncPos(ws, positionData) {
     var roomId = players[ws].roomId;
-    var playerId = players[ws].uuId;
+    var playerId = players[ws].uuid;
     var room = rooms[roomId];
     var data = {"playerId": playerId, "pos": positionData};
     room.broadCast("syncPos", data);
