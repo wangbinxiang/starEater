@@ -216,9 +216,12 @@ function update_physics () {
     game.physics.arcade.collide(stars, platforms);
     for(var i=0;i<playerIds.length;i++) {
         var index = playerIds[i];
-        game.physics.arcade.collide(players[index], platforms);
         players[index].body.velocity.x = 0;
+        game.physics.arcade.collide(players[index], platforms);
         game.physics.arcade.overlap(players[index], stars, updateEatStar, null, this);
+        if(i < playerIds.length - 1 ) {
+            game.physics.arcade.collide(players[index], players[playerIds[i+1]]);
+        }
     }
 
     //game.physics.arcade.collide(players[0], players[1]);
