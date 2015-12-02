@@ -6,78 +6,100 @@ console.log('Server started on 12626');
 
 var rooms = {};
 var players = {};
+var connections = {};
 
-//玩家类
-function player(ws){
+function room() {
     this.uuid = uuid.v4();
-    this.ws = ws;
+    this.randomSeed = Math.floor(Math.random() * 1000 + 1);
+    this.monsters = {}
+    this.playerOne = null;
+    this.playerTwo = null;
+}
+
+function createRoom() {
+    var r = new room();
+    var starCount = 11;
+    var starType = "star";
+    for (var i=0;i<starCount;i++) {
+        var m = createMonster(starType);
+        r.monsters[m.uuid] = m;
+    }
+    return r;
+}
+
+room.prototype.broadCast = function(cmd, data) {
+    this.playerOne.send(cmd, data);
+    this.playerTwo.send(cmd, data);
+}
+
+function player(){
+    this.uuid = uuid.v4();
     this.roomId = null;
 }
 
-//创建玩家
 function createPlayer(ws) {
-    var p = new player(ws);
+    var p = new player();
     players[p.uuid] = p;
+    connections[p.uuid] = ws;
     return p;
 }
 
 player.prototype.send = function(cmd, data) {
     var data = {"cmd": cmd, "pid":this.uuid, "data":data};
-    this.ws.send(JSON.stringify(data));
     console.log(data);
+    var connection = connections[this.uuid];
+    connection.send(JSON.stringify(data));
 }
 
-//玩家等待队列对象
+function monster(type){
+    this.uuid = uuid.v4();
+    this.type = type;
+    this.killed = false;
+}
+
+function createMonster(type) {
+    var m = new monster(type);
+    return m;
+}
+
 function waitingPlayers() {
     this.players = [];
 }
 
-//循环方法扫描等待玩家
 waitingPlayers.prototype.scanWaiterToCreateRoom = function() {
     console.log('scaning.....' + this.players.length);
-    //判断当前等待用户是否多余一个
     if (this.players.length > 1) {
-        //获取玩家数据，创建房间，通知玩家加入房间
-        //获取一号玩家
-        playerOne = this.players.pop();
-        //获取二号玩家
-        playerTwo = this.players.pop();
-
-        //创建房间
         var room = createRoom();
-        //房间加入房间列表
-        rooms[room.urid] = room;
-        //一号玩家加入房间
-        room.playerOne = playerOne;
-        room.playerOne.roomId = room.urid;
-        //二号玩家加入房间
-        room.playerTwo = playerTwo;
-        room.playerTwo.roomId = room.urid;
+        rooms[room.uuid] = room;
 
-        //通知玩家加入房间
+        var playerOne = this.players.pop();
+        var playerTwo = this.players.pop();
+        playerOne.roomId = room.uuid;
+        playerTwo.roomId = room.uuid;
+        room.playerOne = playerOne;
+        room.playerTwo = playerTwo;
+
         this.notifyPlayerJoinRoom(room);
-        //继续等待玩家
         this.scanWaiterToCreateRoom();
     } else {
-        //延时扫描等待玩家
         var _this = this;
         setTimeout(function(){_this.scanWaiterToCreateRoom()}, 1000);
     }
 }
 
 waitingPlayers.prototype.notifyPlayerJoinRoom = function(room) {
+    console.log(room);
     var playerOneData = {
-        "randomSeed": room.randomSeed, 
-        "roomId": room.urid, 
-        "playerOneId": room.playerOne.uuid, 
-        "playerTwoId": room.playerTwo.uuid,
+        "room": room,
+        //"uuid": room.uuid,
+        //"randomSeed": room.randomSeed,
+        //"monsters": room.monsters,
+        //"playerOne": room.playerOne,
+        //"playerTwo": room.playerTwo,
         "yourRoleId": room.playerOne.uuid
     };
     var playerTwoData = {
-        "randomSeed": room.randomSeed, 
-        "roomId": room.urid, 
-        "playerOneId": room.playerOne.uuid, 
-        "playerTwoId": room.playerTwo.uuid,
+        "room": room,
         "yourRoleId": room.playerTwo.uuid
     };
     room.playerOne.send("init", playerOneData)
@@ -89,24 +111,8 @@ waitingPlayers.prototype.playerJoinWaiting = function(player) {
 }
 
 
-//房间类
-function room() {
-    this.urid = uuid.v4();
-    this.randomSeed = Math.floor(Math.random() * 1000 + 1);
-    this.playerOne = null;
-    this.playerTwo = null;
-}
-
-room.prototype.broadCast = function(cmd, data) {
-    this.playerOne.send(cmd, data);
-    this.playerTwo.send(cmd, data);
-}
-
-function createRoom() {
-    return new room();
-}
-
 function controllerSyncPos(ws, playerId, positionData) {
+    console.log(playerId);
     var roomId = players[playerId].roomId;
     var room = rooms[roomId];
     var data = {"playerId": playerId, "pos": positionData};
