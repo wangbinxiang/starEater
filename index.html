@@ -94,6 +94,8 @@ var score = 0;
 var textScore;
 var textConnStatus;
 var playerId = 0;
+var playerX = 0;
+var playerY = 0;
 var room;
 var roomId;
 var monsters;
@@ -140,6 +142,27 @@ function preload () {
     game.stage.disablePauseScreen = true;
 }
 //----------------- preload finish ------------------
+
+
+
+//----------------- preload finish ------------------
+function timerSyncPosition () {
+    if (players[playerId].animations.currentAnim.isPlaying) {
+        return;
+    }
+
+    if (players[playerId].x != playerX || players[playerId].y != playerY) {
+        playerX = players[playerId].x;
+        playerY = players[playerId].y;
+        wsSyncPosition();
+    }
+}
+
+function createTimers() {
+    game.time.events.loop(1000, timerSyncPosition, this);
+}
+//----------------- preload finish ------------------
+
 
 
 
@@ -205,12 +228,17 @@ function create_texts() {
     textConnStatus = game.add.text(game.world.width - 100, 0, 'not connected', {fontSize: '12px', fill: '#eee'});
 }
 
+function updateCounter() {
+    console.log(345);
+}
+
 function create () {
     game.physics.startSystem(Phaser.Physics.ARCADE);
     create_background();
     create_players();
     create_monsters();
     create_texts();
+    createTimers();
 }
 //----------------- create finish ------------------
 
