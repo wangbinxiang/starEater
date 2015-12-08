@@ -34,7 +34,7 @@ room.prototype.broadCast = function(cmd, data) {
 
 function player(){
     this.uuid = uuid.v4();
-    this.roomId = null;
+    this.roomID = null;
 }
 
 function createPlayer(ws) {
@@ -74,8 +74,8 @@ waitingPlayers.prototype.scanWaiterToCreateRoom = function() {
 
         var playerOne = this.players.pop();
         var playerTwo = this.players.pop();
-        playerOne.roomId = room.uuid;
-        playerTwo.roomId = room.uuid;
+        playerOne.roomID = room.uuid;
+        playerTwo.roomID = room.uuid;
         room.playerOne = playerOne;
         room.playerTwo = playerTwo;
 
@@ -91,11 +91,11 @@ waitingPlayers.prototype.notifyPlayerJoinRoom = function(room) {
     console.log(room);
     var playerOneData = {
         "room": room,
-        "yourRoleId": room.playerOne.uuid
+        "yourRoleID": room.playerOne.uuid
     };
     var playerTwoData = {
         "room": room,
-        "yourRoleId": room.playerTwo.uuid
+        "yourRoleID": room.playerTwo.uuid
     };
     room.playerOne.send("init", playerOneData)
     room.playerTwo.send("init", playerTwoData)
@@ -106,15 +106,15 @@ waitingPlayers.prototype.playerJoinWaiting = function(player) {
 }
 
 
-function controllerSyncPos(ws, playerId, positionData) {
-    console.log(playerId);
-    if(!playerId) {
+function controllerSyncPos(ws, playerID, positionData) {
+    console.log(playerID);
+    if(!playerID) {
         ws.close();
         return;
     }
-    var roomId = players[playerId].roomId;
-    var room = rooms[roomId];
-    var data = {"playerId": playerId, "pos": positionData};
+    var roomID = players[playerID].roomID;
+    var room = rooms[roomID];
+    var data = {"playerID": playerID, "pos": positionData};
     room.broadCast("syncPos", data);
 }
 
@@ -133,7 +133,7 @@ wss.on('connection', function(ws) {
     ws.on('message', function(message) {
         var msg = JSON.parse(message);
         var cmd = msg["cmd"];
-        var playerId = msg["pid"];
+        var playerID = msg["pid"];
         var data = msg["data"];
         var resp;
         switch(cmd) {
@@ -141,10 +141,10 @@ wss.on('connection', function(ws) {
                 resp = controllerInit(ws);
                 break;
             case "syncPos":
-                resp = controllerSyncPos(ws, playerId, data);
+                resp = controllerSyncPos(ws, playerID, data);
                 break;
         }
-        console.log('msg: ' + cmd + ', playerId: ' + playerId);
+        console.log('msg: ' + cmd + ', playerID: ' + playerID);
         console.log(data);
     });
     console.log('connection');

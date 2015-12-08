@@ -9,7 +9,45 @@
 <body>
 
 <script type="text/javascript">
-//----------------- helper start ------------------
+
+//----------------- Main START ------------------
+function main() {
+    wsClient.openConnection();
+}
+//----------------- Main END ------------------
+
+
+
+//----------------- Global-var START ------------------
+var WORLD_WIDTH = 800;
+var WORLD_HEIGHT = 600;
+var PLAYER_WIDTH = 32;
+var PLAYER_HEIGHT = 48;
+var STAR_WIDTH = 24;
+var STAR_HEIGHT = 22;
+
+var gameServerAddr = "ws://127.0.0.1:12626";
+var game;
+var platforms;
+var playerIDs = [];
+var players = [];
+var star;
+var score = 0;
+var textScore;
+var textConnStatus;
+var playerID = 0;
+var playerX = 0;
+var playerY = 0;
+var room;
+var roomID;
+var monsters;
+
+var wsClient = new WSClient();
+//----------------- Global-Var END ------------------
+
+
+
+//----------------- Helper START ------------------
 var helper_random_seed = 0;
 function srandom(seed) {
     helper_random_seed = seed;
@@ -18,18 +56,18 @@ function random() {
     var x = Math.sin(helper_random_seed++) * 10000;
     return x - Math.floor(x);
 }
-//----------------- helper finish ------------------
+//----------------- Helper END ------------------
 
 
 
-//----------------- network start ------------------
+//----------------- Network START ------------------
 function wsSyncPosition () {
-    wsTalk("syncPos", {x: players[playerId].x, y: players[playerId].y});
+    wsTalk("syncPos", {x: players[playerID].x, y: players[playerID].y});
 }
 
 function wsTalk(cmd, data) {
     if(wsClient.connected) {
-        var data = {"cmd": cmd, "pid": playerId, "data":data};
+        var data = {"cmd": cmd, "pid": playerID, "data":data};
         console.log("send:")
         console.log(data);
         wsClient.ws.send(JSON.stringify(data));
@@ -60,10 +98,10 @@ WSClient.prototype.onMessage = function(message) {
     var data = msg["data"];
     switch(cmd) {
         case "init":
-            cb_init(data);
+            cbInit(data);
             break;
         case "syncPos":
-            cb_sync_pos(data);
+            cbSyncPos(data);
             break;
     }
 };
@@ -72,88 +110,48 @@ WSClient.prototype.displayError = function(err) {
     this.connected = false;
     console.log('Websocketerror: ' + err);
 };
-//----------------- network finish ------------------
+//----------------- Network END ------------------
 
 
 
-//----------------- global start ------------------
-var WORLD_WIDTH = 800;
-var WORLD_HEIGHT = 600;
-var PLAYER_WIDTH = 32;
-var PLAYER_HEIGHT = 48;
-var STAR_WIDTH = 24;
-var STAR_HEIGHT = 22;
-
-var gameServerAddr = "ws://127.0.0.1:12626";
-var game;
-var platforms;
-var playerIds = [];
-var players = [];
-var star;
-var score = 0;
-var textScore;
-var textConnStatus;
-var playerId = 0;
-var playerX = 0;
-var playerY = 0;
-var room;
-var roomId;
-var monsters;
-
-var wsClient = new WSClient();
-
-function main() {
-    wsClient.openConnection();
-}
-//----------------- global finish ------------------
-
-
-
-//----------------- callbacks start ------------------
-function cb_init(data) {
+//----------------- Callback START ------------------
+function cbInit(data) {
     room = data.room;
-    playerId = data.yourRoleId;
-    roomId = room.roomId;
+    playerID = data.yourRoleID;
+
+    console.log(data);
+    console.log(data.yourRoleID);
+    console.log(playerID);
+
+    roomID = room.roomID;
     srandom(room.randomSeed);
-    playerIds.push(room.playerOne.uuid);
-    playerIds.push(room.playerTwo.uuid);
+    playerIDs.push(room.playerOne.uuid);
+    playerIDs.push(room.playerTwo.uuid);
     game = new Phaser.Game(WORLD_WIDTH, WORLD_HEIGHT, Phaser.AUTO, '', { preload: preload, create: create, update: update });
 }
 
-function cb_sync_pos (data) {
-    var movePlayerId = data.playerId;
+function cbSyncPos (data) {
+    var movePlayerID = data.playerID;
     var x = data.pos.x;
     var y = data.pos.y;
-    if (movePlayerId != playerId) {
-        players[movePlayerId].x = x;
-        players[movePlayerId].y = y;
+    if (movePlayerID != playerID) {
+        players[movePlayerID].x = x;
+        players[movePlayerID].y = y;
     }
 }
-//----------------- callbacks finish ------------------
+//----------------- Callbacks END ------------------
 
 
 
-//----------------- preload start ------------------
-function preload () {
-    game.load.image('sky', 'assets/sky.png');
-    game.load.image('ground', 'assets/platform.png');
-    game.load.image('star', 'assets/star.png');
-    game.load.spritesheet('dude', 'assets/dude.png', PLAYER_WIDTH, PLAYER_HEIGHT);
-    game.stage.disablePauseScreen = true;
-}
-//----------------- preload finish ------------------
-
-
-
-//----------------- preload finish ------------------
+//----------------- Timer START ------------------
 function timerSyncPosition () {
-    if (players[playerId].animations.currentAnim.isPlaying) {
+    if (players[playerID].animations.currentAnim.isPlaying) {
         return;
     }
 
-    if (players[playerId].x != playerX || players[playerId].y != playerY) {
-        playerX = players[playerId].x;
-        playerY = players[playerId].y;
+    if (players[playerID].x != playerX || players[playerID].y != playerY) {
+        playerX = players[playerID].x;
+        playerY = players[playerID].y;
         wsSyncPosition();
     }
 }
@@ -161,13 +159,24 @@ function timerSyncPosition () {
 function createTimers() {
     game.time.events.loop(1000, timerSyncPosition, this);
 }
-//----------------- preload finish ------------------
+//----------------- Timer END ------------------
 
 
 
+//----------------- Preload START ------------------
+function preload () {
+    game.load.image('sky', 'assets/sky.png');
+    game.load.image('ground', 'assets/platform.png');
+    game.load.image('star', 'assets/star.png');
+    game.load.spritesheet('dude', 'assets/dude.png', PLAYER_WIDTH, PLAYER_HEIGHT);
+    game.stage.disablePauseScreen = true;
+}
+//----------------- Preload END ------------------
 
-//----------------- create start ------------------
-function create_background() {
+
+
+//----------------- Create START ------------------
+function createBackground() {
     game.add.sprite(0, 0, 'sky');
 
     platforms = game.add.group();
@@ -183,7 +192,7 @@ function create_background() {
     ledge.body.immovable = true;
 }
 
-function create_player(index, width) {
+function createPlayer(index, width) {
     players[index] = game.add.sprite(width, game.world.height - 150, 'dude');
     game.physics.arcade.enable(players[index]);
     players[index].body.bounce.y = 0.2;
@@ -199,18 +208,18 @@ function create_player(index, width) {
     animationR.onComplete.add(wsSyncPosition, this);
 }
 
-function create_players() {
-    for(var i=0;i<playerIds.length;i++) {
-        var index = playerIds[i];
+function createPlayers() {
+    for(var i=0;i<playerIDs.length;i++) {
+        var index = playerIDs[i];
         var margin = 32;
         if (i % 2 == 1) {
             margin = game.world.width - PLAYER_WIDTH - margin;
         }
-        create_player(index, margin);
+        createPlayer(index, margin);
     }
 }
 
-function create_monsters() {
+function createMonsters() {
     monsters = game.add.group();
     monsters.enableBody = true;
 
@@ -223,7 +232,7 @@ function create_monsters() {
     }
 }
 
-function create_texts() {
+function createTexts() {
     textScore = game.add.text(16, 16, 'Score: 0', {fontSize: '32px', fill: '#000'});
     textConnStatus = game.add.text(game.world.width - 100, 0, 'not connected', {fontSize: '12px', fill: '#eee'});
 }
@@ -234,65 +243,62 @@ function updateCounter() {
 
 function create () {
     game.physics.startSystem(Phaser.Physics.ARCADE);
-    create_background();
-    create_players();
-    create_monsters();
-    create_texts();
+    createBackground();
+    createPlayers();
+    createMonsters();
+    createTexts();
     createTimers();
 }
-//----------------- create finish ------------------
+//----------------- Create END ------------------
 
 
 
-//----------------- update start ------------------
+//----------------- Update START ------------------
 function updateEatStar (player, star) {
     star.kill();
     score += 10;
     textScore.text = 'Score: ' + score;
 }
 
-function update_physics () {
+function updatePhysics () {
     game.physics.arcade.collide(monsters, platforms);
-    for(var i=0;i<playerIds.length;i++) {
-        var index = playerIds[i];
+    for(var i=0;i<playerIDs.length;i++) {
+        var index = playerIDs[i];
         players[index].body.velocity.x = 0;
         game.physics.arcade.collide(players[index], platforms);
         game.physics.arcade.overlap(players[index], monsters, updateEatStar, null, this);
-        if(i < playerIds.length - 1 ) {
-            game.physics.arcade.collide(players[index], players[playerIds[i+1]]);
-        }
     }
 }
 
-function update_controls () {
+function updateControls () {
     cursors = game.input.keyboard.createCursorKeys();
     if (cursors.left.isDown) {
-        players[playerId].body.velocity.x = -150;
-        players[playerId].animations.play('left');
+        players[playerID].body.velocity.x = -150;
+        players[playerID].animations.play('left');
     } else if (cursors.right.isDown) {
-        players[playerId].body.velocity.x = 150;
-        players[playerId].animations.play('right');
+        players[playerID].body.velocity.x = 150;
+        players[playerID].animations.play('right');
     } else {
-        players[playerId].animations.stop();
-        players[playerId].frame = 4;
+        players[playerID].animations.stop();
+        players[playerID].frame = 4;
     }
 
-    if (cursors.up.isDown && players[playerId].body.touching.down) {
-        players[playerId].body.velocity.y = -350;
+    if (cursors.up.isDown && players[playerID].body.touching.down) {
+        players[playerID].body.velocity.y = -350;
     }
 }
 
 
 function update () {
-    update_physics();
-    update_controls();
+    updatePhysics();
+    updateControls();
     if(wsClient.connected) {
         textConnStatus.text = 'connected';
     } else {
         textConnStatus.text = 'disconnected';
     }
 }
-//----------------- update finish ------------------
+//----------------- Update END ------------------
 
 
 main();
