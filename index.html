@@ -119,11 +119,6 @@ WSClient.prototype.displayError = function(err) {
 function cbInit(data) {
     room = data.room;
     playerID = data.yourRoleID;
-
-    console.log(data);
-    console.log(data.yourRoleID);
-    console.log(playerID);
-
     roomID = room.roomID;
     srandom(room.randomSeed);
     playerIDs.push(room.playerOne.uuid);
@@ -228,7 +223,6 @@ function createMonsters() {
     var m;
     var i = 0;
     for (m in room.monsters) {
-        console.log(m);
         i++;
         var monster = monsters.create(room.monsters[m].x, room.monsters[m].y, room.monsters[m].type);
         monster.body.gravity.y = 500;
@@ -256,7 +250,6 @@ function create () {
 
 //----------------- Update START ------------------
 function updateEatStar (player, star) {
-    console.log(star);
     star.kill();
     score += 10;
     textScore.text = 'Score: ' + score;
