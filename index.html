@@ -113,8 +113,8 @@ function cb_init(data) {
     playerId = data.yourRoleId;
     roomId = room.roomId;
     srandom(room.randomSeed);
-    playerIds.push(data.room.playerOne.uuid);
-    playerIds.push(data.room.playerTwo.uuid);
+    playerIds.push(room.playerOne.uuid);
+    playerIds.push(room.playerTwo.uuid);
     game = new Phaser.Game(WORLD_WIDTH, WORLD_HEIGHT, Phaser.AUTO, '', { preload: preload, create: create, update: update });
 }
 
@@ -247,7 +247,6 @@ function update_controls () {
     } else {
         players[playerId].animations.stop();
         players[playerId].frame = 4;
-        wsSyncPosition();
     }
 
     if (cursors.up.isDown && players[playerId].body.touching.down) {
