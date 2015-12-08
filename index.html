@@ -30,6 +30,7 @@ function wsSyncPosition () {
 function wsTalk(cmd, data) {
     if(wsClient.connected) {
         var data = {"cmd": cmd, "pid": playerId, "data":data};
+        console.log("send:")
         console.log(data);
         wsClient.ws.send(JSON.stringify(data));
         return;
@@ -53,6 +54,7 @@ WSClient.prototype.connectionOpen = function() {
 
 WSClient.prototype.onMessage = function(message) {
     var msg = JSON.parse(message.data);
+    console.log("recv:")
     console.log(msg);
     var cmd = msg["cmd"];
     var data = msg["data"];
@@ -103,16 +105,17 @@ function main() {
 }
 //----------------- global finish ------------------
 
+
+
 //----------------- callbacks start ------------------
 function cb_init(data) {
-    playerId = data.yourRoleId;
     room = data.room;
+    playerId = data.yourRoleId;
     roomId = room.roomId;
     srandom(room.randomSeed);
-    playerIds.push(room.playerOneId);
-    playerIds.push(room.playerTwoId);
+    playerIds.push(data.room.playerOne.uuid);
+    playerIds.push(data.room.playerTwo.uuid);
     game = new Phaser.Game(WORLD_WIDTH, WORLD_HEIGHT, Phaser.AUTO, '', { preload: preload, create: create, update: update });
-    game.stage.disablePauseScreen = true;
 }
 
 function cb_sync_pos (data) {
@@ -134,6 +137,7 @@ function preload () {
     game.load.image('ground', 'assets/platform.png');
     game.load.image('star', 'assets/star.png');
     game.load.spritesheet('dude', 'assets/dude.png', PLAYER_WIDTH, PLAYER_HEIGHT);
+    game.stage.disablePauseScreen = true;
 }
 //----------------- preload finish ------------------
 
@@ -157,19 +161,19 @@ function create_background() {
 }
 
 function create_player(index, width) {
-        players[index] = game.add.sprite(width, game.world.height - 150, 'dude');
-        game.physics.arcade.enable(players[index]);
-        players[index].body.bounce.y = 0.2;
-        players[index].body.gravity.y = 300;
-        players[index].body.collideWorldBounds = true;
-        var animationL = players[index].animations.add('left', [0, 1, 2, 3], 10, true);
-        var animationR = players[index].animations.add('right', [5, 6, 7, 8], 10, true);
-        animationL.onStart.add(wsSyncPosition, this);
-        animationR.onStart.add(wsSyncPosition, this);
-        animationL.onLoop.add(wsSyncPosition, this);
-        animationR.onLoop.add(wsSyncPosition, this);
-        animationL.onComplete.add(wsSyncPosition, this);
-        animationR.onComplete.add(wsSyncPosition, this);
+    players[index] = game.add.sprite(width, game.world.height - 150, 'dude');
+    game.physics.arcade.enable(players[index]);
+    players[index].body.bounce.y = 0.2;
+    players[index].body.gravity.y = 300;
+    players[index].body.collideWorldBounds = true;
+    var animationL = players[index].animations.add('left', [0, 1, 2, 3], 10, true);
+    var animationR = players[index].animations.add('right', [5, 6, 7, 8], 10, true);
+    animationL.onStart.add(wsSyncPosition, this);
+    animationR.onStart.add(wsSyncPosition, this);
+    animationL.onLoop.add(wsSyncPosition, this);
+    animationR.onLoop.add(wsSyncPosition, this);
+    animationL.onComplete.add(wsSyncPosition, this);
+    animationR.onComplete.add(wsSyncPosition, this);
 }
 
 function create_players() {

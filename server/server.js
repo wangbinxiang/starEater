@@ -91,11 +91,6 @@ waitingPlayers.prototype.notifyPlayerJoinRoom = function(room) {
     console.log(room);
     var playerOneData = {
         "room": room,
-        //"uuid": room.uuid,
-        //"randomSeed": room.randomSeed,
-        //"monsters": room.monsters,
-        //"playerOne": room.playerOne,
-        //"playerTwo": room.playerTwo,
         "yourRoleId": room.playerOne.uuid
     };
     var playerTwoData = {
@@ -113,6 +108,10 @@ waitingPlayers.prototype.playerJoinWaiting = function(player) {
 
 function controllerSyncPos(ws, playerId, positionData) {
     console.log(playerId);
+    if(!playerId) {
+        ws.close();
+        return;
+    }
     var roomId = players[playerId].roomId;
     var room = rooms[roomId];
     var data = {"playerId": playerId, "pos": positionData};
