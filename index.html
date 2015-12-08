@@ -225,12 +225,15 @@ function createMonsters() {
     monsters = game.add.group();
     monsters.enableBody = true;
 
-    for (var i = 0; i < room.monsters.length; i++) {
-        var monster = monsters.create(
-            i * WORLD_WIDTH / room.monsters.length + WORLD_WIDTH / room.monsters.length / 2 - STAR_WIDTH / 2
-            , 0, 'star');
+    var m;
+    var i = 0;
+    for (m in room.monsters) {
+        console.log(m);
+        i++;
+        var monster = monsters.create(room.monsters[m].x, room.monsters[m].y, room.monsters[m].type);
         monster.body.gravity.y = 500;
         monster.body.bounce.y = 0.7 + random() * 0.2;
+        monster.__uuid = room.monsters[m].uuid;
     }
 }
 
@@ -253,6 +256,7 @@ function create () {
 
 //----------------- Update START ------------------
 function updateEatStar (player, star) {
+    console.log(star);
     star.kill();
     score += 10;
     textScore.text = 'Score: ' + score;

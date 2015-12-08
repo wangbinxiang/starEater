@@ -4,6 +4,13 @@ var WebSocketServer = require('ws').Server
 var uuid = require('node-uuid');
 console.log('Server started on 12626');
 
+var WORLD_WIDTH = 800;
+var WORLD_HEIGHT = 600;
+var PLAYER_WIDTH = 32;
+var PLAYER_HEIGHT = 48;
+var STAR_WIDTH = 24;
+var STAR_HEIGHT = 22;
+
 var rooms = {};
 var players = {};
 var connections = {};
@@ -21,7 +28,9 @@ function createRoom() {
     var starCount = 11;
     var starType = "star";
     for (var i=0;i<starCount;i++) {
-        var m = createMonster(starType);
+        var x = Math.floor( WORLD_WIDTH/starCount*i + WORLD_WIDTH/starCount/2 - STAR_WIDTH/2);
+        var y = 0;
+        var m = createMonster(starType, x, y);
         r.monsters[m.uuid] = m;
     }
     return r;
@@ -51,14 +60,16 @@ player.prototype.send = function(cmd, data) {
     connection.send(JSON.stringify(data));
 }
 
-function monster(type){
+function monster(type, x, y){
     this.uuid = uuid.v4();
     this.type = type;
     this.killed = false;
+    this.x = x;
+    this.y = y;
 }
 
-function createMonster(type) {
-    var m = new monster(type);
+function createMonster(type, x, y) {
+    var m = new monster(type, x, y);
     return m;
 }
 
