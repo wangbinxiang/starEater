@@ -158,7 +158,7 @@ function timerSyncPosition () {
 }
 
 function createTimers() {
-    game.time.events.loop(1000, timerSyncPosition, this);
+    game.time.events.loop(100, timerSyncPosition, this);
 }
 //----------------- Timer END ------------------
 
@@ -237,10 +237,6 @@ function createMonsters() {
 function createTexts() {
     textScore = game.add.text(16, 16, 'Score: 0', {fontSize: '32px', fill: '#000'});
     textConnStatus = game.add.text(game.world.width - 100, 0, 'not connected', {fontSize: '12px', fill: '#eee'});
-}
-
-function updateCounter() {
-    console.log(345);
 }
 
 function create () {
