@@ -57,7 +57,11 @@ player.prototype.send = function(cmd, data) {
     var data = {"cmd": cmd, "pid":this.uuid, "data":data};
     console.log(data);
     var connection = connections[this.uuid];
-    connection.send(JSON.stringify(data));
+    try { 
+        connection.send(JSON.stringify(data));
+    } catch (e) {
+        console.log('can not send message');
+    }
 }
 
 function monster(type, x, y){
